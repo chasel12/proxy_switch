@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#17171b">
+<title>控制器 · CC Switch</title>
+<style>
+  :root {
+    --bg: #17171b;
+    --card: #212127;
+    --card-hi: #26262d;
+    --border: #31313a;
+    --border-hover: #4b4b57;
+    --fg: #f4f4f5;
+    --muted: #9d9da8;
+    --faint: #6b6b76;
+    --blue: #3b82f6;
+    --blue-bright: #60a5fa;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+                 "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: var(--fg);
+    background:
+      radial-gradient(1100px 480px at 12% -12%, rgba(59,130,246,.11), transparent 62%),
+      radial-gradient(900px 480px at 112% 112%, rgba(124,58,237,.07), transparent 60%),
+      var(--bg);
+    overflow-y: scroll;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: #34343d; border-radius: 6px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: #44444f; }
+
+  .app { display: flex; flex-direction: column; min-height: 100%; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 24px;
+    background: rgba(23,23,27,.78);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .logo {
+    width: 30px; height: 30px; border-radius: 9px;
+    display: grid; place-items: center;
+    font-size: 15px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    box-shadow: 0 4px 14px rgba(59,130,246,.35);
+  }
+  .brand h1 { font-size: 15px; font-weight: 650; letter-spacing: .2px; }
+  .brand .sub { font-size: 11px; color: var(--faint); letter-spacing: .6px; }
+  .top-actions { display: flex; gap: 8px; }
+
+  .btn {
+    font: inherit; font-size: 13px; color: var(--fg);
+    padding: 7px 14px; border-radius: 9px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.035);
+    cursor: pointer;
+    transition: border-color .18s, background .18s, box-shadow .18s, transform .1s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { border-color: var(--border-hover); background: rgba(255,255,255,.07); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn-primary {
+    background: var(--blue); border-color: transparent; color: #fff; font-weight: 600;
+  }
+  .btn-primary:hover { background: #2f74e8; box-shadow: 0 4px 18px rgba(59,130,246,.4); }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn-ghost:hover { color: var(--fg); background: rgba(255,255,255,.06); border-color: transparent; }
+  .btn-sm { font-size: 12px; padding: 5px 11px; border-radius: 8px; }
+
+  /* ---------- layout ---------- */
+  main { flex: 1; width: 100%; max-width: 880px; margin: 0 auto; padding: 22px 24px 8px; }
+  section { margin-bottom: 26px; }
+
+  .sec-head { display: flex; align-items: center; gap: 9px; margin: 0 2px 11px; }
+  .sec-icon {
+    width: 24px; height: 24px; border-radius: 7px;
+    display: grid; place-items: center; font-size: 13px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--border);
+  }
+  .sec-head h2 { font-size: 14px; font-weight: 650; }
+  .count {
+    font-size: 11px; color: var(--muted); font-weight: 600;
+    background: rgba(255,255,255,.06); border: 1px solid var(--border);
+    padding: 1px 8px; border-radius: 999px;
+  }
+
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ---------- provider card ---------- */
+  .card {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+    box-shadow: 0 8px 26px rgba(0,0,0,.30);
+    cursor: pointer;
+    transition: transform .22s ease, border-color .22s, box-shadow .22s;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-hover);
+    box-shadow: 0 14px 32px rgba(0,0,0,.42);
+  }
+  .card.current {
+    border-color: rgba(59,130,246,.55);
+    box-shadow: 0 0 0 1px rgba(59,130,246,.22), 0 10px 30px rgba(59,130,246,.13);
+    cursor: default;
+  }
+  .card.current::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, rgba(59,130,246,.15), rgba(59,130,246,.03) 55%, transparent);
+  }
+  .card.current:hover { transform: none; }
+
+  .tile {
+    position: relative; flex: none;
+    width: 40px; height: 40px; border-radius: 11px;
+    display: grid; place-items: center;
+    font-size: 15px; font-weight: 700; letter-spacing: .3px;
+    border: 1px solid rgba(255,255,255,.07);
+    transition: transform .22s;
+  }
+  .card:hover .tile { transform: scale(1.06); }
+
+  .info { flex: 1; min-width: 0; }
+  .title-row { display: flex; align-items: center; gap: 8px; min-height: 22px; flex-wrap: wrap; }
+  .name { font-size: 14.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+  .badge {
+    font-size: 10.5px; font-weight: 600; line-height: 1.5;
+    padding: 1px 8px; border-radius: 6px; white-space: nowrap;
+  }
+  .badge.cat { color: var(--muted); background: rgba(255,255,255,.05); border: 1px solid var(--border); font-weight: 500; }
+  .badge.cur {
+    color: #a8cdff; background: rgba(59,130,246,.16); border: 1px solid rgba(59,130,246,.45);
+    box-shadow: 0 0 12px rgba(59,130,246,.25);
+  }
+  .sub-line {
+    margin-top: 3px; font-size: 12.5px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .sub-line .url { font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; color: var(--faint); }
+  .sub-line .notes { color: var(--muted); }
+
+  .ops { position: relative; display: flex; align-items: center; gap: 9px; flex: none; }
+  .res { font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .res .rd { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .res.ok { color: var(--green); }
+  .res.slow { color: var(--amber); }
+  .res.fail { color: var(--red); }
+  .res.skipped { color: var(--faint); }
+  .res.checking { color: var(--muted); }
+  .res.checking .rd { animation: pulse 1s ease-in-out infinite; }
+
+  .go {
+    font-size: 12.5px; font-weight: 600; color: var(--blue-bright);
+    display: inline-flex; align-items: center; gap: 4px;
+    opacity: 0; transform: translateX(-6px);
+    transition: opacity .2s, transform .2s;
+    white-space: nowrap;
+  }
+  .card:hover .go { opacity: 1; transform: none; }
+  .card.current .go { display: none; }
+
+  /* ---------- relay strip ---------- */
+  .relay {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 15px; margin-bottom: 22px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: linear-gradient(145deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  }
+  .rdot { width: 9px; height: 9px; border-radius: 50%; flex: none; position: relative; }
+  .rdot.on { background: var(--green); box-shadow: 0 0 0 0 rgba(52,211,153,.55); animation: ring 2.2s infinite; }
+  .rdot.off { background: var(--red); }
+  @keyframes ring {
+    0% { box-shadow: 0 0 0 0 rgba(52,211,153,.5); }
+    70% { box-shadow: 0 0 0 7px rgba(52,211,153,0); }
+    100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+  }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .relay .rlabel { font-size: 13px; font-weight: 600; }
+  .relay .rmeta { font-size: 12px; color: var(--faint); font-family: Consolas, monospace; }
+  .relay .rspacer { flex: 1; }
+
+  /* ---------- alert / empty ---------- */
+  .alert {
+    display: flex; align-items: center; gap: 9px;
+    padding: 10px 14px; margin-bottom: 16px;
+    border-radius: 10px; font-size: 13px;
+    border: 1px solid rgba(248,113,113,.4);
+    background: rgba(248,113,113,.08); color: #fca5a5;
+  }
+  .empty {
+    border: 1.5px dashed var(--border); border-radius: var(--radius);
+    padding: 26px; text-align: center; color: var(--faint); font-size: 13px;
+  }
+
+  /* ---------- status bar ---------- */
+  .statusbar {
+    position: sticky; bottom: 0; z-index: 10;
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 24px;
+    font-size: 12px; color: var(--muted);
+    background: rgba(23,23,27,.82);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border);
+  }
+  .statusbar .hint { margin-left: auto; color: var(--faint); }
+
+  /* ---------- modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: grid; place-items: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .modal {
+    width: min(430px, calc(100vw - 48px));
+    background: #23232a;
+    border: 1px solid #3b3b45;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 28px 70px rgba(0,0,0,.65);
+    transform: translateY(10px) scale(.97); transition: transform .2s ease;
+  }
+  .overlay.show .modal { transform: none; }
+  .modal h3 { font-size: 15.5px; font-weight: 650; margin-bottom: 16px; }
+  .modal .target {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px; border-radius: 11px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--border);
+    margin-bottom: 13px;
+  }
+  .modal .target .t-name { font-size: 14px; font-weight: 650; }
+  .modal .target .t-sub { font-size: 12px; color: var(--muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 290px; }
+  .modal .note { font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-bottom: 18px; }
+  .modal .note b { color: var(--fg); font-weight: 600; }
+  .modal .foot { display: flex; justify-content: flex-end; gap: 9px; }
+
+  .spinner {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+    animation: spin .7s linear infinite; display: inline-block;
+  }
+  .btn .spinner { border-color: rgba(255,255,255,.35); border-top-color: #fff; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- toasts ---------- */
+  #toasts { position: fixed; right: 20px; bottom: 46px; z-index: 60;
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+  .toast {
+    min-width: 240px; max-width: 380px;
+    background: #26262e; border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    border-radius: 11px; padding: 11px 15px;
+    font-size: 13px; box-shadow: 0 14px 40px rgba(0,0,0,.55);
+    animation: slideIn .28s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .toast.ok { border-left-color: var(--green); }
+  .toast.err { border-left-color: var(--red); }
+  .toast.info { border-left-color: var(--blue); }
+  .toast .t-title { font-weight: 650; margin-bottom: 2px; }
+  .toast .t-body { color: var(--muted); font-size: 12.5px; word-break: break-all; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } }
+  .toast.out { opacity: 0; transform: translateX(30px); transition: .3s; }
+
+  /* ---------- add provider form ---------- */
+  .view-hidden { display: none !important; }
+  .app-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .app-tab {
+    font: inherit; font-size: 13px; padding: 8px 16px; border-radius: 10px;
+    border: 1px solid var(--border); background: rgba(255,255,255,.035);
+    color: var(--muted); cursor: pointer; transition: .16s;
+  }
+  .app-tab:hover { border-color: var(--border-hover); color: var(--fg); }
+  .app-tab.active {
+    color: #cfe0ff; border-color: rgba(59,130,246,.65);
+    background: rgba(59,130,246,.14); box-shadow: 0 0 12px rgba(59,130,246,.2);
+    font-weight: 600;
+  }
+  .form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .form-head h2 { font-size: 16px; font-weight: 650; }
+  .form-head .fh-sub { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .fcard {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+    box-shadow: 0 8px 26px rgba(0,0,0,.30);
+    padding: 18px; margin-bottom: 16px;
+  }
+  .fcard h3 { font-size: 13.5px; font-weight: 650; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 16px; }
+  .fgrid .span2 { grid-column: 1 / -1; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .hint { font-size: 11.5px; color: var(--faint); margin-top: 5px; line-height: 1.6; }
+  input[type=text], input[type=url], input[type=password], input[type=number], textarea, select {
+    width: 100%; font: inherit; font-size: 13px; color: var(--fg);
+    background: rgba(0,0,0,.30); border: 1px solid var(--border); border-radius: 9px;
+    padding: 8px 11px; outline: none;
+    transition: border-color .16s, box-shadow .16s;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: rgba(59,130,246,.65); box-shadow: 0 0 0 3px rgba(59,130,246,.16);
+  }
+  input::placeholder, textarea::placeholder { color: #5c5c66; }
+  textarea {
+    font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px;
+    line-height: 1.6; resize: vertical; min-height: 104px; white-space: pre;
+  }
+  select { width: auto; min-width: 150px; }
+  .radio-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .radio-pill { position: relative; }
+  .radio-pill input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .radio-pill span {
+    display: block; padding: 7px 13px; border-radius: 9px;
+    border: 1px solid var(--border); font-size: 12.5px; color: var(--muted);
+    cursor: pointer; transition: .16s;
+  }
+  .radio-pill span:hover { border-color: var(--border-hover); color: var(--fg); }
+  .radio-pill input:checked + span {
+    color: #cfe0ff; border-color: rgba(59,130,246,.65); background: rgba(59,130,246,.14);
+    box-shadow: 0 0 10px rgba(59,130,246,.18);
+  }
+  .row-tools { display: flex; gap: 8px; align-items: center; margin-bottom: 9px; flex-wrap: wrap; }
+  .row-tools .rt-hint { font-size: 11.5px; color: var(--faint); }
+  .row-tools .rspacer { flex: 1; }
+  table.mtbl { width: 100%; border-collapse: collapse; }
+  .mtbl th {
+    text-align: left; font-size: 11px; color: var(--faint); font-weight: 600;
+    padding: 0 6px 6px;
+  }
+  .mtbl td { padding: 3px 5px 3px 0; }
+  .mtbl input { padding: 6px 9px; font-size: 12.5px; }
+  .mtbl .f-mdel { padding: 5px 9px; color: var(--red); }
+  .mtbl-empty td { color: var(--faint); font-size: 12px; padding: 9px 6px; }
+  details.adv {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: rgba(255,255,255,.03); margin-bottom: 16px;
+    box-shadow: 0 8px 26px rgba(0,0,0,.30);
+  }
+  details.adv summary {
+    cursor: pointer; padding: 13px 18px; font-size: 13.5px; font-weight: 650;
+    list-style: none; display: flex; align-items: center; gap: 8px;
+    user-select: none;
+  }
+  details.adv summary::-webkit-details-marker { display: none; }
+  details.adv summary::before { content: "▸"; color: var(--faint); transition: transform .2s; }
+  details.adv[open] summary::before { transform: rotate(90deg); }
+  details.adv .adv-body { padding: 2px 18px 18px; }
+  .check-row { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
+  .check-row input { width: 15px; height: 15px; accent-color: var(--blue); padding: 0; }
+  .check-row .cr-label { font-size: 13px; color: var(--fg); }
+  .editor-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .editor-head .eh-label { font-size: 12.5px; font-weight: 650; }
+  .editor-head .rspacer { flex: 1; }
+  .form-foot {
+    display: flex; gap: 10px; justify-content: flex-end; align-items: center;
+    margin-top: 4px; padding-bottom: 16px;
+  }
+  .form-foot .f-msg { margin-right: auto; font-size: 12px; color: var(--red); }
+  @media (max-width: 720px) {
+    .fgrid, .two-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">⇄</div>
+      <div>
+        <h1>控制器</h1>
+        <div class="sub">CC SWITCH CONTROLLER</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost" id="btn-quit" title="退出后台服务（面板同时关闭）">⏻ 退出</button>
+      <button class="btn" id="btn-refresh">⟳ 刷新</button>
+      <button class="btn btn-primary" id="btn-add">＋ 添加供应商</button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div id="home-view">
+      <div id="relays">
+        <div class="relay">
+          <span class="rdot off"></span>
+          <span class="rlabel">反代检测中…</span>
+        </div>
+      </div>
+
+      <div id="alerts"></div>
+      <div id="sections"></div>
+    </div>
+
+    <div id="add-view" class="view-hidden">
+      <div class="form-head">
+        <button class="btn" id="f-back">‹ 返回</button>
+        <div>
+          <h2>添加供应商</h2>
+          <div class="fh-sub">手动填写全部字段 · 支持终端 / 客户端 · 与 CC Switch 共享同一供应商数据库</div>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost" id="f-opencc" title="也可以在 CC Switch 中添加">在 CC Switch 中打开</button>
+      </div>
+
+      <div class="app-tabs" id="f-tabs">
+        <button class="app-tab active" data-app="codex">⚡ Codex（终端）</button>
+        <button class="app-tab" data-app="claude">🌙 Claude Code（终端）</button>
+        <button class="app-tab" data-app="claude-desktop">🖥 Claude Desktop（客户端）</button>
+      </div>
+
+      <div class="fcard">
+        <h3>基础信息</h3>
+        <div class="fgrid">
+          <div class="field">
+            <label>供应商名称<span class="req">*</span></label>
+            <input type="text" id="f-name" placeholder="例如：Claude 官方">
+          </div>
+          <div class="field">
+            <label>备注</label>
+            <input type="text" id="f-notes" placeholder="例如：公司专用账号">
+          </div>
+          <div class="field">
+            <label>官网链接</label>
+            <input type="url" id="f-website" placeholder="https://example.com（可选）">
+          </div>
+          <div class="field" data-on="codex claude">
+            <label>默认模型</label>
+            <input type="text" id="f-model" placeholder="gpt-5.6-sol">
+            <div class="hint">默认请求的模型，随时可改。Codex 留空且配置了模型映射时默认映射第一行；Claude 留空则用 Claude Code 自带默认。</div>
+          </div>
+          <div class="field span2">
+            <label>API Key<span class="req">*</span></label>
+            <input type="password" id="f-key" placeholder="sk-…" autocomplete="off">
+            <div class="hint">只需要填这里，下方 auth.json 会自动填充。</div>
+          </div>
+          <div class="field span2">
+            <label>API 请求地址</label>
+            <input type="url" id="f-base" placeholder="https://your-api-endpoint.com/v1">
+            <div class="hint">💡 填写兼容 OpenAI Response 格式的服务端点地址（完整 URL）— 写入 config.toml 并登记为测速端点。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fcard" data-on="claude claude-desktop">
+        <h3>认证与格式</h3>
+        <div class="fgrid">
+          <div class="field">
+            <label>认证字段（写入 env 的键名）</label>
+            <div class="radio-row">
+              <label class="radio-pill"><input type="radio" name="f-keyfield" value="ANTHROPIC_AUTH_TOKEN" checked><span>ANTHROPIC_AUTH_TOKEN</span></label>
+              <label class="radio-pill"><input type="radio" name="f-keyfield" value="ANTHROPIC_API_KEY"><span>ANTHROPIC_API_KEY</span></label>
+            </div>
+            <div class="hint">默认 AUTH_TOKEN（与 CC Switch 一致，不写 meta）；选 ANTHROPIC_API_KEY 时 meta 记录 apiKeyField。</div>
+          </div>
+          <div class="field" data-on="claude-desktop">
+            <label>运行模式</label>
+            <div class="radio-row">
+              <label class="radio-pill"><input type="radio" name="f-dmode" value="direct" checked><span>direct（直连）</span></label>
+              <label class="radio-pill"><input type="radio" name="f-dmode" value="proxy"><span>proxy（路由接管）</span></label>
+            </div>
+            <div class="hint">写入 meta.claudeDesktopMode，决定 Claude Desktop 走直连还是本地路由。</div>
+          </div>
+        </div>
+      </div>
+
+      <details class="adv" id="f-adv" open>
+        <summary>高级选项</summary>
+        <div class="adv-body">
+          <div class="field" style="margin-bottom:16px">
+            <label>上游格式</label>
+            <div class="radio-row">
+              <label class="radio-pill"><input type="radio" name="f-wire" value="openai_responses" checked><span>Responses（原生）</span></label>
+              <label class="radio-pill"><input type="radio" name="f-wire" value="openai_chat"><span>Chat</span></label>
+              <label class="radio-pill"><input type="radio" name="f-wire" value="anthropic"><span>Anthropic Messages</span></label>
+            </div>
+            <div class="hint">原生 Responses 直连不转换格式；使用 Chat Completions 协议选 Chat；只提供原生 Anthropic Messages 协议选 Anthropic。Chat 与 Anthropic 均需开启路由接管才能转换为 Responses。</div>
+          </div>
+
+          <div class="field" data-on="codex" style="margin-bottom:16px">
+            <label>模型映射</label>
+            <div class="row-tools">
+              <button class="btn btn-sm" id="f-madd">＋ 添加模型</button>
+              <button class="btn btn-sm" id="f-mfetch">⟳ 获取模型列表</button>
+              <span class="rt-hint">生成 Codex model_catalog_json，让 /model 命令显示这些第三方模型名；修改后需重启 Codex 刷新模型列表。</span>
+            </div>
+            <table class="mtbl">
+              <thead>
+                <tr><th style="width:34%">模型名</th><th style="width:30%">显示名</th><th style="width:24%">上下文窗口</th><th style="width:36px"></th></tr>
+              </thead>
+              <tbody id="f-mrows">
+                <tr class="mtbl-empty"><td colspan="4">暂无映射 — 留空时 Codex 使用上方「默认模型」。</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="field" data-on="claude" style="margin-bottom:16px">
+            <label>模型映射（角色 → 模型）</label>
+            <div class="row-tools">
+              <span class="rt-hint">写入 settings_config.env 的 ANTHROPIC_DEFAULT_*_MODEL(_NAME) 与 CLAUDE_CODE_SUBAGENT_MODEL；留空的键不写。</span>
+            </div>
+            <table class="mtbl">
+              <thead>
+                <tr><th style="width:16%">角色</th><th style="width:42%">模型</th><th style="width:42%">显示名（可选）</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Sonnet</td><td><input class="f-cm" data-key="ANTHROPIC_DEFAULT_SONNET_MODEL" type="text" placeholder="claude-sonnet-4-5"></td><td><input class="f-cn" data-key="ANTHROPIC_DEFAULT_SONNET_MODEL_NAME" type="text" placeholder="Claude Sonnet 4.5"></td></tr>
+                <tr><td>Opus</td><td><input class="f-cm" data-key="ANTHROPIC_DEFAULT_OPUS_MODEL" type="text" placeholder="claude-opus-4-1"></td><td><input class="f-cn" data-key="ANTHROPIC_DEFAULT_OPUS_MODEL_NAME" type="text" placeholder="Claude Opus 4.1"></td></tr>
+                <tr><td>Fable</td><td><input class="f-cm" data-key="ANTHROPIC_DEFAULT_FABLE_MODEL" type="text" placeholder="claude-fable-5"></td><td><input class="f-cn" data-key="ANTHROPIC_DEFAULT_FABLE_MODEL_NAME" type="text" placeholder="Claude Fable 5"></td></tr>
+                <tr><td>Haiku</td><td><input class="f-cm" data-key="ANTHROPIC_DEFAULT_HAIKU_MODEL" type="text" placeholder="claude-haiku-4-5"></td><td><input class="f-cn" data-key="ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME" type="text" placeholder="Claude Haiku 4.5"></td></tr>
+                <tr><td>Subagent</td><td><input class="f-cm" data-key="CLAUDE_CODE_SUBAGENT_MODEL" type="text" placeholder="claude-sonnet-4-5"></td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="field" data-on="claude-desktop" style="margin-bottom:16px">
+            <label>模型路由</label>
+            <div class="row-tools">
+              <button class="btn btn-sm" id="f-dtadd">＋ 添加模型</button>
+              <span class="rt-hint">写入 meta.claudeDesktopModelRoutes（{模型名: {model, labelOverride}}），Claude Desktop 的 /model 按此显示。</span>
+            </div>
+            <table class="mtbl">
+              <thead>
+                <tr><th style="width:56%">模型名</th><th style="width:44%">标签覆盖（可选）</th><th style="width:36px"></th></tr>
+              </thead>
+              <tbody id="f-dtrows">
+                <tr class="mtbl-empty"><td colspan="3">暂无路由 — Claude Desktop 使用自带模型列表。</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="field" data-on="codex claude" style="margin-bottom:16px">
+            <label>自定义 User-Agent</label>
+            <input type="text" id="f-ua" placeholder="Mozilla/5.0 ...">
+            <div class="hint">预设 · 仅在开启本地路由/代理接管后生效，会替换转发到供应商 API 请求中的 User-Agent。</div>
+          </div>
+
+          <div class="two-col" data-on="codex claude">
+            <div class="field">
+              <label>本地代理请求覆盖 · Header 覆盖</label>
+              <textarea id="f-headers" spellcheck="false" placeholder='{
+  "X-Provider": "cc-switch"
+}'></textarea>
+              <div class="hint">仅在开启路由接管后生效，应用于协议转换后的上游请求。JSON 对象，留空不覆盖。</div>
+            </div>
+            <div class="field">
+              <label>本地代理请求覆盖 · Body 覆盖</label>
+              <textarea id="f-body" spellcheck="false" placeholder='{
+  "temperature": 0.2
+}'></textarea>
+              <div class="hint">同上，合并进协议转换后的上游请求 Body。</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div class="two-col" data-on="codex">
+        <div class="fcard">
+          <div class="editor-head">
+            <span class="eh-label">auth.json (JSON) <span class="req">*</span></span>
+            <span class="rspacer"></span>
+            <button class="btn btn-sm" id="f-authfmt">格式化</button>
+          </div>
+          <textarea id="f-auth" spellcheck="false" style="min-height:132px"></textarea>
+          <div class="hint">Codex auth.json 配置内容 — 由 API Key 自动填充，也可手动修改。</div>
+        </div>
+        <div class="fcard">
+          <div class="editor-head">
+            <span class="eh-label">config.toml (TOML)</span>
+            <span class="rspacer"></span>
+            <button class="btn btn-sm" id="f-cfgrst">重置模板</button>
+          </div>
+          <textarea id="f-cfg" spellcheck="false" style="min-height:132px"></textarea>
+          <div class="hint">Codex config.toml 配置内容 — 按上方字段实时生成模板，可手动修改。</div>
+        </div>
+      </div>
+
+      <div class="fcard" data-on="claude claude-desktop">
+        <div class="editor-head">
+          <span class="eh-label">settings_config (JSON) <span class="req">*</span></span>
+          <span class="rspacer"></span>
+          <button class="btn btn-sm" id="f-setfmt">格式化</button>
+          <button class="btn btn-sm" id="f-setrst">重置模板</button>
+        </div>
+        <textarea id="f-set" spellcheck="false" style="min-height:180px"></textarea>
+        <div class="hint">Claude 供应商的 settings_config（env 对象）— 由上方字段自动生成，可手动修改；切换后写入 ~/.claude/settings.json / Claude Desktop 配置。</div>
+      </div>
+
+      <div class="fcard" data-on="codex claude">
+        <h3>计费配置</h3>
+        <label class="check-row" style="margin-bottom:0">
+          <input type="checkbox" id="f-costen">
+          <span class="cr-label">使用单独配置（为该供应商单独设置成本倍率）</span>
+        </label>
+        <div class="fgrid" id="f-costfields" style="display:none; margin-top:14px">
+          <div class="field">
+            <label>成本倍率</label>
+            <input type="text" id="f-cost" placeholder="1.0">
+            <div class="hint">非负数字，统计用量时按此倍率放大。</div>
+          </div>
+          <div class="field">
+            <label>计价来源</label>
+            <select id="f-precio">
+              <option value="">继承全局</option>
+              <option value="request">按请求计价</option>
+              <option value="response">按响应计价</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-foot">
+        <span class="f-msg" id="f-msg"></span>
+        <button class="btn" id="f-cancel">取消</button>
+        <button class="btn btn-primary" id="f-save">保存并添加</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <span id="status">就绪</span>
+    <span class="hint">点击卡片切换供应商 · 切换前自动备份 live 配置</span>
+  </footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>切换供应商</h3>
+    <div class="target">
+      <div class="tile" id="m-tile"></div>
+      <div style="min-width:0">
+        <div class="t-name" id="m-name"></div>
+        <div class="t-sub" id="m-sub"></div>
+      </div>
+    </div>
+    <div class="note">
+      将以 <b id="m-app"></b> 的该供应商覆写 live 配置：<br>
+      自动备份原文件（<b>.bak-pre-switch-*</b>）并同步 DB 当前标记。
+    </div>
+    <div class="foot">
+      <button class="btn" id="m-cancel">取消</button>
+      <button class="btn btn-primary" id="m-ok">立即切换</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+window.addEventListener("error", (e) => {
+  if (!e.message) return;
+  const s = document.getElementById("status");
+  if (s) s.textContent = "JSERR " + e.message + " @" + e.lineno;
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const s = document.getElementById("status");
+  if (s) s.textContent = "JSREJ " + ((e.reason && e.reason.message) || e.reason);
+});
+const CAT = {
+  official: "官方", cn_official: "国内官方", custom: "自定义",
+  aggregator: "聚合", oauth: "OAuth",
+};
+const state = { apps: [], relays: [] };
+let results = {};        // "app/id" -> {status, message}
+let switching = false;
+
+document.title = "控制器 · CC Switch";
+
+/* ---------- api ---------- */
+async function api(path, body) {
+  const opts = body !== undefined
+    ? { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body) }
+    : { method: "GET" };
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+async function load(silent) {
+  try {
+    const s = await api("/api/state");
+    if (s.error) { showAlert(s.error); return; }
+    Object.assign(state, s);
+    hideAlerts();
+    render();
+  } catch (e) {
+    setStatus("✗ " + (e.message || e));
+    if (!silent) toast("err", "连接失败", String(e));
+  }
+}
+
+/* ---------- render ---------- */
+function hexA(hex, a) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return `rgba(148,163,184,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function glyph(name, icon) {
+  if (icon === "deepseek") return "DS";
+  if (icon === "anthropic") return "A";
+  if (icon === "openai") return "OA";
+  if (icon === "qiniu") return "Q7";
+  const t = (name || "?").trim();
+  return t.slice(0, 2).toUpperCase();
+}
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---------- relays（自动发现，按清单渲染多条） ---------- */
+let relayBusy = {};   // id -> "start" | "stop"：操作中不重绘该条，保住 spinner
+
+function createRelayStrip(rl) {
+  const div = document.createElement("div");
+  div.className = "relay";
+  div.dataset.rid = rl.id;
+  div.innerHTML = `
+    <span class="rdot"></span>
+    <span class="rlabel"></span>
+    <span class="rmeta"></span>
+    <span class="rspacer"></span>
+    <button class="btn btn-sm" data-act="start" style="display:none">启动 / 修复反代</button>
+    <button class="btn btn-sm" data-act="stop" style="display:none">⏸ 暂停反代</button>`;
+  return div;
+}
+
+function updateRelayStrip(el, rl) {
+  if (relayBusy[rl.id]) return;
+  const online = !!rl.online;
+  el.querySelector(".rdot").className = "rdot " + (online ? "on" : "off");
+  el.querySelector(".rlabel").textContent = rl.name + (online ? "在线" : "离线");
+  el.querySelector(".rmeta").textContent = rl.address;
+  el.querySelector('[data-act="start"]').style.display =
+    online || !rl.can_start ? "none" : "";
+  el.querySelector('[data-act="stop"]').style.display =
+    online && rl.can_stop ? "" : "none";
+}
+
+function renderRelays() {
+  const host = $("#relays");
+  const list = state.relays || [];
+  for (const el of [...host.children]) {
+    if (!list.some(r => r.id === el.dataset.rid)) el.remove();
+  }
+  if (!list.length) {
+    if (![...host.children].some(el => el.dataset.rid === "__hint")) {
+      const div = document.createElement("div");
+      div.className = "relay";
+      div.dataset.rid = "__hint";
+      div.innerHTML = `<span class="rdot off"></span><span class="rlabel">未发现反代产品</span>
+        <span class="rmeta">在同级项目放 relay.json 即可接入</span>`;
+      host.appendChild(div);
+    }
+    return;
+  }
+  for (const rl of list) {
+    let el = [...host.children].find(c => c.dataset.rid === rl.id);
+    if (!el) { el = createRelayStrip(rl); host.appendChild(el); }
+    updateRelayStrip(el, rl);
+  }
+}
+
+function render() {
+  renderRelays();
+
+  /* sections */
+  const host = $("#sections");
+  host.innerHTML = "";
+  for (const app of state.apps) {
+    const sec = document.createElement("section");
+    const list = app.providers || [];
+    sec.innerHTML = `
+      <div class="sec-head">
+        <span class="sec-icon">${app.emoji}</span>
+        <h2>${esc(app.label)}</h2>
+        <span class="count">${list.length}</span>
+      </div>
+      <div class="cards"></div>`;
+    const cards = sec.querySelector(".cards");
+    if (!list.length) {
+      cards.innerHTML = `<div class="empty">暂无供应商 — 点击右上角「＋ 添加供应商」填写表单新增</div>`;
+    }
+    for (const p of list) cards.appendChild(cardEl(app, p));
+    host.appendChild(sec);
+  }
+  renderRelayAlert();
+}
+
+function cardEl(app, p) {
+  const key = `${app.id}/${p.id}`;
+  const tint = p.iconColor && /^#[0-9a-f]{6}$/i.test(p.iconColor)
+    ? p.iconColor : "#64748b";
+  const el = document.createElement("div");
+  el.className = "card" + (p.current ? " current" : "");
+  el.dataset.app = app.id;
+  el.dataset.id = p.id;
+
+  const sub = p.notes
+    ? `<span class="notes">${esc(p.notes)}</span>`
+    : p.baseUrl
+      ? `<span class="url">${esc(p.baseUrl)}</span>`
+      : `<span class="url" style="opacity:.6">未配置接口地址</span>`;
+
+  const cat = p.category ? `<span class="badge cat">${CAT[p.category] || esc(p.category)}</span>` : "";
+  const cur = p.current ? `<span class="badge cur">● 当前</span>` : "";
+  const res = results[key];
+  const resHtml = res ? resEl(res) : "";
+
+  el.innerHTML = `
+    <div class="tile" style="background:${hexA(tint,.16)};color:${tint};border-color:${hexA(tint,.3)}">${esc(glyph(p.name, p.icon))}</div>
+    <div class="info">
+      <div class="title-row">
+        <span class="name">${esc(p.name)}</span>${cat}${cur}
+      </div>
+      <div class="sub-line">${sub}</div>
+    </div>
+    <div class="ops">
+      ${resHtml}
+      <span class="btn btn-sm btn-test">测连通</span>
+      <span class="go">切换 ›</span>
+    </div>`;
+
+  el.querySelector(".btn-test").addEventListener("click", (e) => {
+    e.stopPropagation();
+    runTest(app.id, p.id, el);
+  });
+  el.addEventListener("click", () => {
+    if (p.current) { setStatus(`「${p.name}」已是当前供应商`); return; }
+    if (app.id === "claude-desktop") {
+      toast("info", "Claude Desktop", "客户端供应商暂不支持面板内切换，请在 CC Switch 中切换");
+      return;
+    }
+    openModal(app, p);
+  });
+  return el;
+}
+
+function resEl(r) {
+  const icon = { ok: "●", slow: "●", fail: "●", skipped: "—", checking: "●" }[r.status] || "●";
+  return `<span class="res ${r.status}"><span class="rd"></span>${icon} ${esc(r.message || "")}</span>`;
+}
+
+function renderRelayAlert() {
+  /* relay 离线时在 alerts 区不重复打扰 —— 顶部条已有按钮，这里留空 */
+}
+
+function showAlert(msg) {
+  $("#alerts").innerHTML = `<div class="alert">⚠ ${esc(msg)}</div>`;
+}
+function hideAlerts() { $("#alerts").innerHTML = ""; }
+
+/* ---------- actions ---------- */
+async function runTest(appId, id, el) {
+  const key = `${appId}/${id}`;
+  results[key] = { status: "checking", message: "测试中…" };
+  const ops = el.querySelector(".ops");
+  const old = ops.querySelector(".res");
+  if (old) old.remove();
+  ops.insertAdjacentHTML("afterbegin", resEl(results[key]));
+  try {
+    const r = await api("/api/test", { app: appId, id });
+    results[key] = r.ok ? r.result : { status: "fail", message: r.error || "测试失败" };
+  } catch (e) {
+    results[key] = { status: "fail", message: String(e) };
+  }
+  const card = document.querySelector(`.card[data-app="${appId}"][data-id="${id}"]`);
+  if (card) {
+    const cur = card.querySelector(".res");
+    if (cur) cur.remove();
+    card.querySelector(".ops").insertAdjacentHTML("afterbegin", resEl(results[key]));
+  }
+}
+
+function openModal(app, p) {
+  const tint = p.iconColor && /^#[0-9a-f]{6}$/i.test(p.iconColor) ? p.iconColor : "#64748b";
+  const tile = $("#m-tile");
+  tile.textContent = glyph(p.name, p.icon);
+  tile.style.cssText = `background:${hexA(tint,.16)};color:${tint};border-color:${hexA(tint,.3)}`;
+  $("#m-name").textContent = p.name;
+  $("#m-sub").textContent = p.notes || p.baseUrl || "未配置接口地址";
+  $("#m-app").textContent = app.label;
+  $("#overlay").classList.add("show");
+  $("#overlay").dataset.app = app.id;
+  $("#overlay").dataset.id = p.id;
+  $("#overlay").dataset.name = p.name;
+  switching = false;
+  $("#m-ok").disabled = false;
+  $("#m-ok").innerHTML = "立即切换";
+}
+
+function closeModal() {
+  $("#overlay").classList.remove("show");
+}
+
+async function doSwitch() {
+  if (switching) return;
+  const ov = $("#overlay");
+  const appId = ov.dataset.app, id = ov.dataset.id, name = ov.dataset.name;
+  switching = true;
+  $("#m-ok").disabled = true;
+  $("#m-ok").innerHTML = `<span class="spinner"></span> 切换中…`;
+  setStatus(`正在切换 → ${name} …`);
+  try {
+    const r = await api("/api/switch", { app: appId, id });
+    if (!r.ok) throw new Error(r.error || "切换失败");
+    closeModal();
+    toast("ok", "切换完成", `${appId} 当前供应商 → ${name}`);
+    setStatus(`✓ 已切换到 ${name}`);
+    await load(true);
+  } catch (e) {
+    toast("err", "切换失败", String(e.message || e));
+    setStatus(`✗ 切换失败：${e.message || e}`);
+    switching = false;
+    $("#m-ok").disabled = false;
+    $("#m-ok").innerHTML = "立即切换";
+    closeModal();
+  }
+}
+
+/* ---------- toasts / status ---------- */
+function toast(kind, title, body) {
+  const el = document.createElement("div");
+  el.className = `toast ${kind}`;
+  el.innerHTML = `<div class="t-title">${esc(title)}</div>` +
+                 (body ? `<div class="t-body">${esc(body)}</div>` : "");
+  $("#toasts").appendChild(el);
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); },
+             kind === "err" ? 6000 : 3200);
+}
+function setStatus(s) { $("#status").textContent = s; }
+
+/* ---------- add provider view ---------- */
+let fAuthDirty = false, fCfgDirty = false, fSetDirty = false;
+
+function fsetMsg(s) { $("#f-msg").textContent = s || ""; }
+
+function showAdd() {
+  $("#home-view").classList.add("view-hidden");
+  $("#add-view").classList.remove("view-hidden");
+  resetForm();
+  window.scrollTo(0, 0);
+}
+function showHome() {
+  $("#add-view").classList.add("view-hidden");
+  $("#home-view").classList.remove("view-hidden");
+}
+
+function fModelFirst() {
+  const t = $("#f-model").value.trim();
+  if (t) return t;
+  for (const inp of document.querySelectorAll("#f-mrows .f-mm")) {
+    const v = inp.value.trim();
+    if (v) return v;
+  }
+  return "gpt-5.6-sol";
+}
+function tomlStr(s) {
+  return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function buildConfig() {
+  const name = tomlStr($("#f-name").value.trim() || "custom");
+  const base = $("#f-base").value.trim().replace(/\/+$/, "");
+  let s = 'model_provider = "custom"\n' +
+          `model = "${tomlStr(fModelFirst())}"\n` +
+          'model_reasoning_effort = "high"\n' +
+          'disable_response_storage = true\n\n' +
+          '[model_providers.custom]\n' +
+          `name = "${name}"\n`;
+  if (base && /^https?:\/\//.test(base)) s += `base_url = "${base}"\n`;
+  s += 'wire_api = "responses"\nrequires_openai_auth = true\n';
+  return s;
+}
+function regenConfig(force) {
+  if (fCfgDirty && !force) return;
+  $("#f-cfg").value = buildConfig();
+  fCfgDirty = false;
+}
+function regenAuth() {
+  $("#f-auth").value = JSON.stringify({ OPENAI_API_KEY: $("#f-key").value }, null, 2);
+  fAuthDirty = false;
+}
+
+/* -- app tabs (codex / claude / claude-desktop) -- */
+function currentApp() {
+  return $("#f-tabs .app-tab.active").dataset.app;
+}
+function claudeKeyField() {
+  return document.querySelector('input[name="f-keyfield"]:checked').value;
+}
+function buildClaudeSettings() {
+  const env = {};
+  const key = $("#f-key").value.trim();
+  if (key) env[claudeKeyField()] = key;
+  const base = $("#f-base").value.trim().replace(/\/+$/, "");
+  if (base && /^https?:\/\//.test(base)) env.ANTHROPIC_BASE_URL = base;
+  if (currentApp() === "claude") {
+    const m0 = $("#f-model").value.trim();
+    if (m0) env.ANTHROPIC_MODEL = m0;
+    document.querySelectorAll("#add-view .f-cm").forEach((inp) => {
+      const v = inp.value.trim();
+      if (v) env[inp.dataset.key] = v;
+    });
+    document.querySelectorAll("#add-view .f-cn").forEach((inp) => {
+      const v = inp.value.trim();
+      if (v) env[inp.dataset.key] = v;
+    });
+  }
+  return JSON.stringify({ env }, null, 2);
+}
+function regenSettings(force) {
+  if (fSetDirty && !force) return;
+  $("#f-set").value = buildClaudeSettings();
+  fSetDirty = false;
+}
+function regenEditors(force) {
+  if (currentApp() === "codex") {
+    if (!fAuthDirty) regenAuth();
+    regenConfig(force);
+  } else {
+    regenSettings(force);
+  }
+}
+function applyAppTab(app, force) {
+  document.querySelectorAll("#f-tabs .app-tab").forEach((b) =>
+    b.classList.toggle("active", b.dataset.app === app));
+  document.querySelectorAll("#add-view [data-on]").forEach((el) => {
+    el.style.display = el.dataset.on.split(/\s+/).includes(app) ? "" : "none";
+  });
+  const fmt = app === "codex" ? "openai_responses" : "anthropic";
+  const fr = document.querySelector(`input[name="f-wire"][value="${fmt}"]`);
+  if (fr) fr.checked = true;
+  $("#f-model").placeholder = app === "codex" ? "gpt-5.6-sol" : "claude-sonnet-4-5（可选）";
+  regenEditors(force);
+}
+
+function addDtRow(model, label) {
+  const empty = $("#f-dtrows .mtbl-empty");
+  if (empty) empty.remove();
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input class="f-dtm" type="text" placeholder="claude-sonnet-4-5"></td>
+    <td><input class="f-dtl" type="text" placeholder="可选"></td>
+    <td><button class="btn btn-sm f-dtdel" title="删除该行">✕</button></td>`;
+  tr.querySelector(".f-dtm").value = model || "";
+  tr.querySelector(".f-dtl").value = label || "";
+  tr.querySelector(".f-dtdel").addEventListener("click", () => {
+    tr.remove();
+    if (!$("#f-dtrows tr")) {
+      $("#f-dtrows").innerHTML =
+        `<tr class="mtbl-empty"><td colspan="3">暂无路由 — Claude Desktop 使用自带模型列表。</td></tr>`;
+    }
+  });
+  $("#f-dtrows").appendChild(tr);
+}
+function readDesktopRoutes() {
+  const out = [];
+  for (const tr of document.querySelectorAll("#f-dtrows tr")) {
+    if (tr.classList.contains("mtbl-empty")) continue;
+    const m = tr.querySelector(".f-dtm").value.trim();
+    if (!m) continue;
+    const label = tr.querySelector(".f-dtl").value.trim();
+    out.push(label ? { model: m, label } : { model: m });
+  }
+  return out;
+}
+
+function resetForm() {
+  for (const id of ["f-name", "f-notes", "f-website", "f-model", "f-key", "f-base", "f-ua"])
+    $("#" + id).value = "";
+  $("#f-adv").open = true;
+  document.querySelector('input[name="f-keyfield"][value="ANTHROPIC_AUTH_TOKEN"]').checked = true;
+  document.querySelector('input[name="f-dmode"][value="direct"]').checked = true;
+  $("#f-mrows").innerHTML =
+    `<tr class="mtbl-empty"><td colspan="4">暂无映射 — 留空时 Codex 使用上方「默认模型」。</td></tr>`;
+  $("#f-dtrows").innerHTML =
+    `<tr class="mtbl-empty"><td colspan="3">暂无路由 — Claude Desktop 使用自带模型列表。</td></tr>`;
+  document.querySelectorAll("#add-view .f-cm, #add-view .f-cn").forEach((i) => { i.value = ""; });
+  $("#f-headers").value = "";
+  $("#f-body").value = "";
+  $("#f-costen").checked = false;
+  $("#f-costfields").style.display = "none";
+  $("#f-cost").value = "";
+  $("#f-precio").value = "";
+  fAuthDirty = fCfgDirty = fSetDirty = false;
+  fsetMsg("");
+  applyAppTab(currentApp(), true);
+}
+
+function addModelRow(model, display, ctx) {
+  const empty = $("#f-mrows .mtbl-empty");
+  if (empty) empty.remove();
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input class="f-mm" type="text" placeholder="gpt-5.6-sol"></td>
+    <td><input class="f-md" type="text" placeholder="可选"></td>
+    <td><input class="f-mc" type="text" placeholder="可选，如 131072"></td>
+    <td><button class="btn btn-sm f-mdel" title="删除该行">✕</button></td>`;
+  tr.querySelector(".f-mm").value = model || "";
+  tr.querySelector(".f-md").value = display || "";
+  tr.querySelector(".f-mc").value = ctx || "";
+  tr.querySelector(".f-mdel").addEventListener("click", () => {
+    tr.remove();
+    if (!$("#f-mrows tr")) {
+      $("#f-mrows").innerHTML =
+        `<tr class="mtbl-empty"><td colspan="4">暂无映射 — 留空时 Codex 使用上方「默认模型」。</td></tr>`;
+    }
+    regenConfig();
+  });
+  $("#f-mrows").appendChild(tr);
+}
+
+function readModels() {
+  const out = [];
+  for (const tr of document.querySelectorAll("#f-mrows tr")) {
+    if (tr.classList.contains("mtbl-empty")) continue;
+    const model = tr.querySelector(".f-mm").value.trim();
+    if (!model) continue;
+    const row = { model };
+    const d = tr.querySelector(".f-md").value.trim();
+    const c = tr.querySelector(".f-mc").value.trim();
+    if (d) row.displayName = d;
+    if (c) row.contextWindow = c;
+    out.push(row);
+  }
+  return out;
+}
+
+function parseJsonField(id, label, required) {
+  const raw = $("#" + id).value.trim();
+  if (!raw) {
+    if (required) throw new Error(label + " 不能为空");
+    return null;
+  }
+  let v;
+  try { v = JSON.parse(raw); }
+  catch (e) { throw new Error(label + " 不是合法 JSON: " + e.message); }
+  if (v === null || typeof v !== "object" || Array.isArray(v))
+    throw new Error(label + " 必须是 JSON 对象");
+  return v;
+}
+
+async function fetchModels() {
+  const base = $("#f-base").value.trim();
+  if (!base) { fsetMsg("请先填写 API 请求地址"); $("#f-base").focus(); return; }
+  const b = $("#f-mfetch");
+  b.disabled = true;
+  b.innerHTML = `<span class="spinner"></span> 获取中…`;
+  fsetMsg("");
+  try {
+    const r = await api("/api/provider/models",
+      { baseUrl: base, apiKey: $("#f-key").value.trim() });
+    if (!r.ok) throw new Error(r.error || "获取失败");
+    const ids = r.models || [];
+    if (!ids.length) {
+      fsetMsg("端点返回了空模型列表");
+      toast("info", "模型列表", "端点未返回任何模型");
+    } else {
+      $("#f-mrows").innerHTML = "";
+      for (const id of ids) addModelRow(id, "", "");
+      toast("ok", "模型列表已获取", `共 ${ids.length} 个模型`);
+      regenConfig();
+    }
+  } catch (e) {
+    const m = String(e.message || e);
+    fsetMsg(m);
+    toast("err", "获取模型列表失败", m);
+  }
+  b.disabled = false;
+  b.innerHTML = "⟳ 获取模型列表";
+}
+
+async function saveProvider() {
+  const name = $("#f-name").value.trim();
+  if (!name) { fsetMsg("供应商名称不能为空"); $("#f-name").focus(); return; }
+  const key = $("#f-key").value.trim();
+  if (!key) { fsetMsg("API Key 不能为空"); $("#f-key").focus(); return; }
+  const base = $("#f-base").value.trim().replace(/\/+$/, "");
+  if (base && !/^https?:\/\//.test(base)) {
+    fsetMsg("API 请求地址必须以 http(s):// 开头"); $("#f-base").focus(); return;
+  }
+  const website = $("#f-website").value.trim();
+  if (website && !/^https?:\/\//.test(website)) {
+    fsetMsg("官网链接必须以 http(s):// 开头"); $("#f-website").focus(); return;
+  }
+
+  const costOn = $("#f-costen").checked;
+  const payload = {
+    app: currentApp(),
+    name,
+    notes: $("#f-notes").value.trim(),
+    websiteUrl: website,
+    baseUrl: base,
+    apiKey: key,
+    apiFormat: document.querySelector('input[name="f-wire"]:checked').value,
+  };
+
+  if (payload.app === "codex") {
+    let authObj, headers, bodyOv;
+    try {
+      authObj = parseJsonField("f-auth", "auth.json", true);
+      headers = parseJsonField("f-headers", "Header 覆盖", false);
+      bodyOv = parseJsonField("f-body", "Body 覆盖", false);
+    } catch (e) {
+      fsetMsg(e.message);
+      toast("err", "配置有误", e.message);
+      return;
+    }
+    Object.assign(payload, {
+      customUserAgent: $("#f-ua").value.trim(),
+      modelCatalog: readModels(),
+      headersOverride: headers,
+      bodyOverride: bodyOv,
+      authJson: JSON.stringify(authObj),
+      configToml: $("#f-cfg").value,
+      costMultiplier: costOn ? ($("#f-cost").value.trim() || "1") : null,
+      pricingModelSource: costOn ? ($("#f-precio").value || null) : null,
+    });
+  } else {
+    let settingsObj;
+    try {
+      settingsObj = parseJsonField("f-set", "settings_config", true);
+    } catch (e) {
+      fsetMsg(e.message);
+      toast("err", "配置有误", e.message);
+      return;
+    }
+    if (!settingsObj.env || typeof settingsObj.env !== "object" || Array.isArray(settingsObj.env)) {
+      fsetMsg("settings_config 必须包含 env 对象");
+      return;
+    }
+    payload.apiKeyField = claudeKeyField();
+    payload.settingsJson = JSON.stringify(settingsObj);
+    if (payload.app === "claude") {
+      let headers, bodyOv;
+      try {
+        headers = parseJsonField("f-headers", "Header 覆盖", false);
+        bodyOv = parseJsonField("f-body", "Body 覆盖", false);
+      } catch (e) {
+        fsetMsg(e.message);
+        toast("err", "配置有误", e.message);
+        return;
+      }
+      Object.assign(payload, {
+        customUserAgent: $("#f-ua").value.trim(),
+        headersOverride: headers,
+        bodyOverride: bodyOv,
+        costMultiplier: costOn ? ($("#f-cost").value.trim() || "1") : null,
+        pricingModelSource: costOn ? ($("#f-precio").value || null) : null,
+      });
+    } else {
+      payload.desktopMode = document.querySelector('input[name="f-dmode"]:checked').value;
+      payload.desktopRoutes = readDesktopRoutes();
+    }
+  }
+
+  const b = $("#f-save");
+  b.disabled = true;
+  b.innerHTML = `<span class="spinner"></span> 保存中…`;
+  fsetMsg("");
+  try {
+    const r = await api("/api/provider/add", payload);
+    if (!r.ok) throw new Error(r.error || "添加失败");
+    toast("ok", "已添加供应商", `${name} · 已写入共享数据库`);
+    setStatus(`✓ 已添加「${name}」`);
+    showHome();
+    await load(true);
+  } catch (e) {
+    const m = String(e.message || e);
+    fsetMsg(m);
+    toast("err", "添加失败", m);
+    setStatus("✗ 添加失败：" + m);
+  }
+  b.disabled = false;
+  b.innerHTML = "保存并添加";
+}
+
+function wireForm() {
+  document.querySelectorAll("#f-tabs .app-tab").forEach((b) =>
+    b.addEventListener("click", () => applyAppTab(b.dataset.app, false)));
+
+  const onEdit = () => {
+    if (currentApp() === "codex") regenConfig();
+    else regenSettings();
+  };
+  $("#f-key").addEventListener("input", () => {
+    if (currentApp() === "codex") regenAuth();
+    else regenSettings();
+  });
+  for (const id of ["f-name", "f-base", "f-model"])
+    $("#" + id).addEventListener("input", onEdit);
+  for (const r of document.querySelectorAll('input[name="f-wire"]'))
+    r.addEventListener("change", onEdit);
+  for (const r of document.querySelectorAll('input[name="f-keyfield"]'))
+    r.addEventListener("change", () => regenSettings());
+  document.querySelectorAll("#add-view .f-cm, #add-view .f-cn").forEach((inp) =>
+    inp.addEventListener("input", () => regenSettings()));
+
+  $("#f-auth").addEventListener("input", () => { fAuthDirty = true; });
+  $("#f-cfg").addEventListener("input", () => { fCfgDirty = true; });
+  $("#f-set").addEventListener("input", () => { fSetDirty = true; });
+  $("#f-authfmt").addEventListener("click", () => {
+    try {
+      const v = JSON.parse($("#f-auth").value || "{}");
+      $("#f-auth").value = JSON.stringify(v, null, 2);
+      fsetMsg("");
+    } catch (e) { fsetMsg("auth.json 格式化失败: " + e.message); }
+  });
+  $("#f-setfmt").addEventListener("click", () => {
+    try {
+      const v = JSON.parse($("#f-set").value || "{}");
+      $("#f-set").value = JSON.stringify(v, null, 2);
+      fsetMsg("");
+    } catch (e) { fsetMsg("settings_config 格式化失败: " + e.message); }
+  });
+  $("#f-cfgrst").addEventListener("click", () => regenConfig(true));
+  $("#f-setrst").addEventListener("click", () => regenSettings(true));
+  $("#f-madd").addEventListener("click", () => addModelRow("", "", ""));
+  $("#f-dtadd").addEventListener("click", () => addDtRow("", ""));
+  $("#f-mfetch").addEventListener("click", fetchModels);
+  $("#f-costen").addEventListener("change", () => {
+    $("#f-costfields").style.display = $("#f-costen").checked ? "" : "none";
+  });
+  $("#f-back").addEventListener("click", showHome);
+  $("#f-cancel").addEventListener("click", showHome);
+  $("#f-save").addEventListener("click", saveProvider);
+  $("#f-opencc").addEventListener("click", async () => {
+    const r = await api("/api/open-cc-switch", {});
+    r.ok ? toast("info", "CC Switch", r.message) : toast("err", "启动失败", r.error);
+  });
+
+  applyAppTab("codex", true);  // 初始可见性 + 生成模板
+}
+
+/* ---------- wiring ---------- */
+$("#btn-refresh").addEventListener("click", () => { setStatus("已刷新"); load(); });
+$("#btn-quit").addEventListener("click", async () => {
+  const b = $("#btn-quit");
+  b.disabled = true;
+  b.innerHTML = `<span class="spinner"></span> 退出中…`;
+  try { await api("/api/quit", {}); } catch (e) { /* 服务端已断开 = 已退出 */ }
+  toast("info", "后台服务已退出", "可双击 控制器.exe 重新打开");
+  setTimeout(() => window.close(), 600);
+  setTimeout(() => { b.disabled = false; b.innerHTML = "⏻ 退出"; }, 1500);
+});
+$("#btn-add").addEventListener("click", showAdd);
+$("#relays").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-act]");
+  if (!b) return;
+  const strip = b.closest(".relay");
+  const rid = strip && strip.dataset.rid;
+  const rl = (state.relays || []).find(r => r.id === rid);
+  if (!rl || relayBusy[rid]) return;
+  const act = b.dataset.act;
+  relayBusy[rid] = act;
+  b.disabled = true;
+  const orig = b.innerHTML;
+  b.innerHTML = `<span class="spinner"></span> ${act === "start" ? "启动中…" : "暂停中…"}`;
+  setStatus(act === "start" ? `正在启动 ${rl.name}…` : `正在暂停 ${rl.name}…`);
+  try {
+    const r = await api(`/api/relay/${act}`, { id: rid });
+    if (r.ok) {
+      toast(act === "start" ? "ok" : "info",
+            act === "start" ? `${rl.name} 已在线` : `${rl.name} 已暂停`,
+            r.message || rl.address);
+    } else {
+      toast("err", act === "start" ? "启动后仍不在线" : "操作失败",
+            String(r.message || r.error || "").slice(0, 300));
+    }
+  } catch (err) { toast("err", "操作失败", String(err)); }
+  delete relayBusy[rid];
+  b.disabled = false;
+  b.innerHTML = orig;
+  await load(true);
+});
+$("#m-cancel").addEventListener("click", closeModal);
+$("#m-ok").addEventListener("click", doSwitch);
+$("#overlay").addEventListener("click", (e) => {
+  if (e.target === $("#overlay") && !switching) closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !switching) closeModal();
+});
+
+wireForm();
+load();
+setInterval(() => load(true), 20000);
+</script>
+</body>
+</html>
