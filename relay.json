@@ -1,0 +1,20 @@
+{
+  "id": "workbuddy",
+  "name": "WorkBuddy 网关",
+  "port": 8788,
+  "host": "127.0.0.1",
+  "start": {
+    "cmd": [
+      "~/.workbuddy/binaries/python/envs/default/Scripts/python.exe",
+      "relay_start.py"
+    ],
+    "cwd": "E:\\文档\\ChatGPT\\proxy\\workbuddy2api-hub",
+    "wait_seconds": 20
+  },
+  "stop": {
+    "cmdline_match": "wb_proxy\\.py"
+  },
+  "health": {
+    "type": "tcp"
+  }
+}
